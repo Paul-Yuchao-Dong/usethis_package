@@ -1,0 +1,78 @@
+---
+title: "Untitled"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r}
+
+iris %>% 
+  group_by(Species) %>% 
+  group_modify(
+    ~broom::tidy(lm(Petal.Length ~ Sepal.Length, data = .x))
+  )
+```
+
+```{r}
+
+iris %>% 
+  group_by(Species) %>% 
+  group_map(
+    ~lm(Petal.Length ~ Sepal.Length, data = .x)
+  )
+```
+```{r}
+iris %>% 
+  group_by(Species) %>% 
+  group_map(
+    ~{
+      broom::tidy(lm(Petal.Length ~ Sepal.Length, data = .x)) %>% 
+        add_column(Species = .y$Species)
+    }
+  ) %>% 
+  bind_rows()
+```
+
+```{r}
+iris %>% 
+  group_by(Species) %>% 
+  group_map(
+    ~{
+      broom::tidy(lm(Petal.Length ~ Sepal.Length, data = .x)) %>% 
+        add_column(!!!.y)
+    }
+  ) %>% 
+  bind_rows()
+```
+
+```{r}
+iris %>% 
+  group_by(Species) %>% 
+  summarise_at(
+    vars(contains("Petal"), contains("Sepal")),
+    mean
+  )
+```
+
+```{r}
+iris %>% 
+  group_by(Species) %>% 
+  summarise_at(
+    vars(contains(".")),
+    ~mean(.x, trim = .2)
+  )
+```
+
+```{r}
+iris %>% 
+  group_by(Species) %>% 
+  summarise_at(
+    vars(contains(".")),
+    list(mean = mean, sd = sd)
+  )
+```
+
