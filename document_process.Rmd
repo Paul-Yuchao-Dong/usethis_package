@@ -1,0 +1,119 @@
+---
+title: "document_process"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readxl)
+
+january_delays <- read_excel(here::here("static", "data", "usethis-reports", "Subway_&_SRT_Logs_January_2019.xlsx"))
+
+january_delays
+```
+First, I clean the column names.
+```{r}
+library(dplyr)
+library(janitor)
+
+january_delays <- january_delays %>%
+  clean_names()
+```
+
+Then I want to check that line is one of YU, BD, SHP, SRT
+
+```{r}
+library(assertr)
+
+january_delays %>%
+  assert(in_set("YU", "BD", "SHP", "SRT"), line)
+```
+Ok, nope! So I’ll clean up cases where that’s not true.
+
+```{r}
+january_delays %>%
+  filter(!(line %in% c("YU", "BD", "SHP", "SRT"))) %>%
+  count(line)
+```
+
+And recode where possible.
+
+```{r}
+january_delays <- january_delays %>%
+  mutate(line = case_when(line %in% c("B/D", "BD LINE") ~ "BD",
+                          line == "YUS" ~ "YU",
+                          TRUE ~ line))
+```
+
+Then finally exclude cases where it’s still not true.
+
+```{r}
+january_delays <- january_delays %>%
+  filter(line %in% c("YU", "BD", "SHP", "SRT"))
+```
+
+Now the data looks good! But, we only have the code of the delay. There is another data set with the actual description.
+
+```{r}
+delay_codes <- read_excel(here::here("static", "data", "usethis-reports", "Subway & SRT Log Codes.xlsx")) %>%
+  clean_names()
+```
+
+```{r}
+visdat::vis_dat(delay_codes)
+```
+
+```{r}
+delay_codes
+```
+
+
+Because, for some reason, the main subway codes are separate from the SRT codes. It’s ok, I can put them together.
+
+
+```{r}
+delay_codes2 <- delay_codes %>% 
+  mutate(description = coalesce(code_description_3, code_description_7),
+         code = coalesce(sub_rmenu_code, srt_rmenu_code)
+         ) %>% 
+  select(code, description)
+```
+
+Coalesce didn't work because somtimes both sub_rmenu_code and srt_rmenu_code are available
+
+```{r}
+delay_codes <- delay_codes  %>%
+  select(code = sub_rmenu_code, description = code_description_3) %>%
+  remove_empty("rows") %>%
+  bind_rows(
+    delay_codes  %>%
+              select(code = srt_rmenu_code, description = code_description_7) %>%
+              remove_empty("rows")
+  )
+```
+
+
+
+
+```{r}
+delay_codes %>% count(code, sort = T)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
