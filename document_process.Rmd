@@ -102,10 +102,52 @@ delay_codes <- delay_codes  %>%
 delay_codes %>% count(code, sort = T)
 ```
 
+Then, I’ll combine the delays with the codes so we actually have the corresponding descriptions.
 
+```{r}
+january_delays <- january_delays %>%
+  left_join(delay_codes,
+            by = "code")
+```
 
+And check that all codes in the data have a corresponding description.
 
+```{r}
+january_delays %>%
+  assert(not_na, description)
+```
 
+I found an old version of the TTC delays codes data set that has two of these in it (weird that this one doesn’t). So, I’m going to update the description with those. For the one that’s still unknown, I’ll mark it as so. It only appears twice, so I doubt one of our top causes of delay will be “Delay Description Unknown” anyways.
+
+```{r}
+january_delays <- january_delays %>%
+  mutate(description = case_when(code == "MUNCA" ~ "No Collector Available - Non E.S.A. Related",
+                                 code == "TRNCA" ~ "No Collector Available",
+                                 code == "PUEO" ~ "Delay Description Unknown",
+                                 TRUE ~ description))
+```
+
+Finally, I’m ready to look at the top 5 causes for delays for each line.
+
+```{r}
+library(ggplot2)
+
+january_delays %>% 
+  group_by(line, description) %>% 
+  summarise(delays = sum(min_delay)) %>% 
+  arrange(-delays) %>% 
+  slice(1:5) %>% 
+  
+  ggplot(aes(description, delays))+
+    geom_col()+
+    facet_wrap(~line, nrow =1)+
+    scale_x_discrete("") +
+    scale_y_continuous("Delay (minutes)") + 
+    ggtitle("Top 10 causes for delay, by line",
+            subtitle = "January 2019") + 
+    coord_flip()+
+    theme_minimal()
+```
 
 
 
